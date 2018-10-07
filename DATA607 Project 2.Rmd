@@ -1,0 +1,214 @@
+---
+title: "DATA 607 Project 2"
+author: "Sergio Ortega Cruz"
+date: "October 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load the library
+# Check if the package is installed. If not, install the package
+if(!require('tidyr')) {
+  install.packages('tidyr')
+  library(tidyr)
+}
+
+# Check if the package is installed. If not, install the package
+if(!require('dplyr')) {
+  install.packages('dplyr')
+  library(dplyr)
+}
+
+# Check if the package is installed. If not, install the package
+if(!require('ggplot2')) {
+  install.packages('ggplot2')
+  library(ggplot2)
+}
+```
+
+## Choose 3 Datasets and  execute the proposed transformation tasks described in the discussion forum
+
+
+*1st Dataset Djocovich from Mikhail Groysman
+
+All the source CSV files are hosted in Github
+
+```{r dataset1}
+url <- "https://raw.githubusercontent.com/sortega7878/DATA607Project2/master/Djocovich Mikhail Groysman.csv"
+download_file <- "djocovich.csv" # name of the file on the local machine after download
+
+# the file will be downloaded to the working directory
+downloader::download(url, download_file)
+
+# read the file into a vector
+conn <- file(download_file, open="r")
+dfdj <- readLines(conn, warn = FALSE)
+
+close(conn)
+djoco <- read.csv("djocovich.csv", header=T, stringsAsFactors = F)
+djoco
+```
+
+Rename and clean column names and Fill empty Disciplines Rows
+```{r empty}
+library(plyr)
+djoco <- rename(djoco, c("ï..Discipline"="Disciplines", "WR"="WinRatio"))
+djoco
+```
+
+Fill the Empty rows where value Singles or Doubles are needed
+
+```{r sindob}
+djoco$Disciplines [2:7]<-paste("Singles")
+djoco$Disciplines [8:14]<-paste("Doubles")
+djoco
+```
+Remove totals
+
+
+```{r totals}
+
+djoco<-filter(djoco,(djoco$Type!="Total"))
+djoco
+
+```
+Substitute "-" with 0's
+
+```{r zeroing}
+
+djoco %>% mutate_all(funs(ifelse(.=="-", "0", .)))
+```
+Change all dashes for zero's
+
+The final Format is Tidy and ready for processing
+
+
+*Second Dataset Poverty Rates by Chester Poon
+
+```{r dataset2}
+url <- "https://raw.githubusercontent.com/sortega7878/DATA607Project2/master/Poverty Chester Poon.csv"
+download_file <- "poverty.csv" # name of the file on the local machine after download
+
+# the file will be downloaded to the working directory
+downloader::download(url, download_file)
+
+# read the file into a vector
+conn <- file(download_file, open="r")
+dfdj <- readLines(conn, warn = FALSE)
+
+close(conn)
+poverty <- read.csv("poverty.csv", header=T, stringsAsFactors = F)
+head(poverty)
+```
+
+Change "Dirty" Column names
+
+```{r names4}
+poverty <- rename(poverty, c("ï..Table.with.row.headings.in.column.A.and.column.headings.in.rows.6.to.9."="Heading"))
+head(poverty)
+
+```
+
+Extract the exact subset of data we want to work with
+
+```{r slice}
+poverty<-slice(poverty,9:17)
+poverty<-subset(poverty,select = c(Heading,X,X.1,X.5,X.6))
+head(poverty)
+```
+Clean empty rows and fill the year where needed
+
+```{r race}
+#Filing Yeaqr Columns
+library(stringr)
+poverty$X<-2016
+poverty$X.5<-2017
+poverty3<- subset(poverty,X.1!="")
+poverty3
+```
+In order to put consolidated columns will separate everything in two different datasets and bind them later
+
+```{r names}
+library (gtools)
+
+df1<-data.frame("Race Sex"=poverty3$Heading, "Year"=poverty3$X, "Poor Number"=poverty3$X.1)
+df2<-data.frame("Race Sex"=poverty3$Heading, "Year"=poverty3$X.5, "Poor Number"=poverty3$X.6)
+df3<-smartbind(df1,df2)
+df3
+
+
+```
+The task Was so separate the columns into Sex and Race however this seems to be a tidier format for analysis since alll the categorical varibales are in a single column and the transformation into different columns will aggregate just a lot of NA or zeros
+
+```{r dataset3}
+library(stringr)
+url <- "https://raw.githubusercontent.com/sortega7878/DATA607Project2/master/messi stats Hans Angrantz.csv"
+download_file <- "messi.csv" # name of the file on the local machine after download
+
+# the file will be downloaded to the working directory
+downloader::download(url, download_file)
+
+# read the file into a vector
+conn <- file(download_file, open="r")
+dfdj <- readLines(conn, warn = FALSE)
+
+close(conn)
+messi <- read.csv("messi.csv", header=T, stringsAsFactors = F)
+messi
+```
+
+1) Remove the header and the lines
+2)Get Column Season, Champion League goal
+3)Create a data frame
+4)Process the summary of the data (mean, median, 1st quartile and 3rd quartile)
+5) histogram and scatter plot
+
+```{r head}
+
+#The easiest way of tostart is slice all the data we don't need
+#Removing unnecesary columns
+#poverty<-slice(poverty,1:17)
+#messi<-subset(messi,select = c(Season,X.3))
+messi<- subset(messi,X.3!="")
+messi<-slice(messi,2:16)
+
+messi<-subset(messi,select = c(Season,X.3))
+messi
+
+```
+
+Cleaning Season Data and change names of columns
+
+```{r season}
+
+messi$Season[grep("[:digits:]", messi$Season)]
+messi$Season<-substring(messi$Season,1,4)
+messi <- rename(messi, c("X.3"="Goals"))
+messi
+
+```
+
+Changing format to Data Frame and generate statistical data as requested
+
+```{r summaryplts}
+
+
+messi2 = as.data.frame(sapply(messi, as.numeric))
+summary(messi2)
+```
+
+Generation of plots as requested in the problem
+
+```{r plot2}
+
+ggplot(messi2, aes(x=Season, y=Goals)) +
+    geom_bar(stat="identity")  
+
+
+ggplot(messi2, aes(x=Season, y=Goals)) +
+    geom_point(shape=4)  
+
+```
+
